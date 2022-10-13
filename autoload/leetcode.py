@@ -26,7 +26,15 @@ except ImportError:
 try:
     import keyring
 except ImportError:
-    keyring = None
+    class Keyring:
+        """Dummy providing all used functions"""
+        def get_password(_service_name, _username):
+            return None
+        def set_password(_service_name, _username, _password):
+            pass
+        def delete_password(_service_name, _username):
+            pass
+    keyring = Keyring
 
 
 LC_BASE = os.environ['LEETCODE_BASE_URL']
@@ -165,7 +173,10 @@ def load_session_cookie(browser):
         _echoerr('keyring not installed: pip3 install keyring --user')
         return False
 
-    session_cookie_raw = keyring.get_password('leetcode.vim', 'SESSION_COOKIE')
+    try:
+        session_cookie_raw = keyring.get_password('leetcode.vim', 'SESSION_COOKIE')
+    except keyring.errors.InitError:
+        session_cookie_raw = None
     if session_cookie_raw is None:
         cookies = getattr(browser_cookie3, browser)(domain_name=LC_BASE.split('/')[-1])
         for cookie in cookies:
@@ -176,7 +187,10 @@ def load_session_cookie(browser):
         else:
             _echoerr('Leetcode session cookie not found. Please login in browser.')
             return False
-        keyring.set_password('leetcode.vim', 'SESSION_COOKIE', session_cookie_raw)
+        try:
+            keyring.set_password('leetcode.vim', 'SESSION_COOKIE', session_cookie_raw)
+        except keyring.errors.InitError:
+            pass
     else:
         session_cookie = pickle.loads(session_cookie_raw.encode('utf-8'))
 
@@ -187,7 +201,10 @@ def load_session_cookie(browser):
     progress = get_progress()
     if progress is None:
         _echoerr('cannot get progress. Please relogin in your browser.')
-        keyring.delete_password('leetcode.vim', 'SESSION_COOKIE')
+        try:
+            keyring.delete_password('leetcode.vim', 'SESSION_COOKIE')
+        except keyring.errors.InitError:
+            pass
         return False
 
     return True
